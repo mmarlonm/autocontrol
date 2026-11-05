@@ -1,0 +1,23 @@
+{
+  "name": "vehicle-backend",
+  "version": "1.0.0",
+  "description": "Backend API para gestion de tenencias vehiculares en Mexico",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "scrape": "python scrapers/main.py",
+    "test": "node test/backend.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "sqlite3": "^5.1.7"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "AutoControl México",
+    "slug": "auto-control-mexico",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#18b0b8"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#18b0b8"
+      },
+      "package": "com.autocontrol.mexico"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#18b0b8"
+        }
+      ]
+    ]
+  }
+}
