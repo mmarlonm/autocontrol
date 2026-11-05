@@ -9,6 +9,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { requestFCMToken, setupNotificationListeners, setupBackgroundHandler } from './src/services/notificationHandler';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -90,12 +91,25 @@ function RootNavigator() {
   const { isAuthenticated, loading, updatePushToken } = useAuth();
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        updatePushToken(token);
-      }
-    });
-  }, [updatePushToken]);
+    // 1. Configurar listener para cuando app está en background
+    setupBackgroundHandler();
+
+    // 2. Si el usuario está autenticado, solicitar token FCM y configurar listeners
+    if (isAuthenticated) {
+      requestFCMToken().then((token) => {
+        if (token) {
+          updatePushToken(token);
+        }
+      });
+
+      const unsubscribe = setupNotificationListeners();
+      return () => {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      };
+    }
+  }, [isAuthenticated, updatePushToken]);
 
   if (loading) {
     return (
@@ -183,3 +197,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f9f9',
   },
 });
+

@@ -170,3 +170,4 @@ if __name__ == '__main__':
 
     success = run_scraper(plate_filter=args.plate)
     sys.exit(0 if success else 1)
+

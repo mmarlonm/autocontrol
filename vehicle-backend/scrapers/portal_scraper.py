@@ -149,3 +149,4 @@ def scrape_vehicle_portal(plate: str, state: str = 'CDMX') -> dict:
             continue
 
     return last_data or PortalCDMXScraper.scrape(plate)
+

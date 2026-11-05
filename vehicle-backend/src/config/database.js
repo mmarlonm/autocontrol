@@ -6,6 +6,11 @@ const client = new Client({
     `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
 });
 
+const db = client;
+if (db && !db.close) {
+  db.close = (cb) => db.end(cb);
+}
+
 client.connect((err) => {
   if (err) {
     console.error('Error al conectar con PostgreSQL:', err.message);

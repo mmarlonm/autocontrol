@@ -11,3 +11,4 @@ router.put('/read-all', NotificationController.markAllAsRead);
 router.post('/test', NotificationController.sendTestNotification);
 
 module.exports = router;
+

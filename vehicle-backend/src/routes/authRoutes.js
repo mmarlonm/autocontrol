@@ -11,3 +11,4 @@ router.post('/fcm-token', authMiddleware, AuthController.updateFcmToken);
 router.put('/fcm-token', authMiddleware, AuthController.updateFcmToken);
 
 module.exports = router;
+

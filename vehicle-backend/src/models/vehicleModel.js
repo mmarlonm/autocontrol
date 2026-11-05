@@ -120,3 +120,4 @@ const VehicleModel = {
 };
 
 module.exports = VehicleModel;
+

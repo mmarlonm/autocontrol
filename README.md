@@ -58,3 +58,4 @@ cd vehicle-backend
 npm test
 ```
 Ejecuta la suite unitaria (`test/backend.test.js`) y la suite HTTP End-to-End (`test/api.test.js`).
+

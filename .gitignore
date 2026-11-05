@@ -52,6 +52,11 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Firebase credentials
+*firebase*.json
+*-adminsdk-*.json
+
 # OS
 .DS_Store
 Thumbs.db
+

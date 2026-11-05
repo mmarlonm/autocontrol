@@ -13,3 +13,4 @@ router.get('/debts', VehicleController.getVehicleStatus); // Alias
 router.put('/', VehicleController.updateVehicle);
 
 module.exports = router;
+

@@ -1,9 +1,11 @@
 import { Platform } from 'react-native';
 import { storageService } from './storage';
 
-// En emulador Android 10.0.2.2 apunta al localhost de la máquina host.
-// En iOS / Web localhost funciona directamente.
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+const DEV = __DEV__;
+const DEFAULT_HOST = DEV
+  ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
+  : 'https://vehicle-mgm-production.up.railway.app';
+
 export const API_BASE_URL = `${DEFAULT_HOST}/api`;
 
 const request = async (endpoint, options = {}) => {
@@ -95,3 +97,4 @@ export const api = {
       method: 'PUT'
     })
 };
+

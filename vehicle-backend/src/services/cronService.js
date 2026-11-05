@@ -152,3 +152,4 @@ module.exports = {
   runPythonScraper,
   getScraperState: () => ({ ...scraperState })
 };
+
