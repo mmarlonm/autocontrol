@@ -43,4 +43,31 @@ router.post('/trigger', authMiddleware, async (req, res) => {
   }
 });
 
+// Ejecutar scraper vía cron-job.org (SIN autenticación)
+// Usado por: cron-job.org para ejecutar diariamente a las 8 AM
+router.post('/run', async (req, res) => {
+  try {
+    console.log('[ScraperRoute /run] Ejecutando scraper (vía cron-job.org)...');
+
+    // Ejecutar en segundo plano
+    const resultPromise = runPythonScraper();
+
+    // Responder inmediatamente (el scraper corre en background)
+    return res.status(202).json({
+      success: true,
+      message: 'Scraper iniciado exitosamente en segundo plano',
+      state: getScraperState(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[ScraperRoute /run] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al ejecutar scraper',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
+
