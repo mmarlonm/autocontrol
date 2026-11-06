@@ -116,10 +116,10 @@ const VehicleController = {
         tenencia: {
           year: vehicle.tenencia_year || currentYear,
           status: vehicle.tenencia_status || 'PENDIENTE',
-          tenencia_base: vehicle.tenencia_amount || 3200.0,
-          subsidio_aplicado: vehicle.subsidy_active ? (vehicle.subsidy_amount || 3200.0) : 0.0,
-          refrendo_a_pagar: vehicle.refrendo_amount || 698.0,
-          total_a_pagar: vehicle.total_due || 698.0,
+          tenencia_base: vehicle.tenencia_amount !== undefined ? Number(vehicle.tenencia_amount) : 3200.0,
+          subsidio_aplicado: vehicle.subsidy_active ? (vehicle.subsidy_amount !== undefined ? Number(vehicle.subsidy_amount) : 3200.0) : 0.0,
+          refrendo_a_pagar: vehicle.refrendo_amount !== undefined ? Number(vehicle.refrendo_amount) : (vehicle.tenencia_status === 'PAGADO' ? 0.0 : 698.0),
+          total_a_pagar: vehicle.total_due !== undefined ? Number(vehicle.total_due) : (vehicle.tenencia_status === 'PAGADO' ? 0.0 : 698.0),
           fecha_limite_subsidio: vehicle.due_date || `${currentYear}-03-31`,
           subsidio_activo: !!vehicle.subsidy_active,
           condicion_subsidio: vehicle.subsidy_condition || 'Subsidio del 100% en tenencia al pagar refrendo antes del 31 de marzo',
@@ -146,9 +146,12 @@ const VehicleController = {
   getAllTenencias: async (req, res) => {
     try {
       const userId = req.user.id;
+      console.log(`[VehicleController.getAllTenencias] 🔍 Solicitando tenencias para userId: ${userId}`);
+
       const vehicle = await VehicleModel.findByUserId(userId);
 
       if (!vehicle) {
+        console.warn(`[VehicleController.getAllTenencias] ⚠️ No se encontró vehículo para userId: ${userId}`);
         return res.status(404).json({
           success: false,
           message: 'No tienes ningún vehículo registrado.'
@@ -156,14 +159,15 @@ const VehicleController = {
       }
 
       const allTenencias = await VehicleModel.getAllTenenciasByUserId(userId);
+      console.log(`[VehicleController.getAllTenencias] ✅ ${allTenencias.length} tenencias encontradas para placa ${vehicle.plate}`);
 
       const formattedTenencias = allTenencias.map(t => ({
-        year: t.year,
+        year: Number(t.year),
         status: t.status || 'PENDIENTE',
-        tenencia_base: t.tenencia_amount || 3200.0,
-        subsidio_aplicado: t.subsidy_active ? (t.subsidy_amount || 3200.0) : 0.0,
-        refrendo_a_pagar: t.refrendo_amount || 698.0,
-        total_a_pagar: t.total_due || 698.0,
+        tenencia_base: t.tenencia_amount !== undefined ? Number(t.tenencia_amount) : 3200.0,
+        subsidio_aplicado: t.subsidy_active ? (t.subsidy_amount !== undefined ? Number(t.subsidy_amount) : 3200.0) : 0.0,
+        refrendo_a_pagar: t.refrendo_amount !== undefined ? Number(t.refrendo_amount) : (t.status === 'PAGADO' ? 0.0 : 698.0),
+        total_a_pagar: t.total_due !== undefined ? Number(t.total_due) : (t.status === 'PAGADO' ? 0.0 : 698.0),
         fecha_limite: t.due_date || `${t.year}-03-31`,
         subsidio_activo: !!t.subsidy_active,
         condicion_subsidio: t.subsidy_condition || '',
