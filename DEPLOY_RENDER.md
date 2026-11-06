@@ -52,7 +52,7 @@ Una vez que Render crea el servicio:
 4. Agregar estas 8 variables:
 
 ```
-DATABASE_URL = postgresql://postgres:LHLPJuXvIyf3TZCg@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
+DATABASE_URL = postgresql://postgres:<PASSWORD>@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
 
 NODE_ENV = production
 

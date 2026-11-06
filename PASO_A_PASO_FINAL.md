@@ -294,7 +294,7 @@ Una vez que Railway crea el proyecto:
 4. Agregar estas variables:
 
 ```
-DATABASE_URL = postgresql://postgres:LHLPJuXvIyf3TZCg@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
+DATABASE_URL = postgresql://postgres:<PASSWORD>@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
 
 NODE_ENV = production
 
@@ -531,7 +531,7 @@ Buscar: "[CronService]" o "[Python]" en los logs
 
 ```
 API Backend:        https://vehicle-mgm-production.up.railway.app
-Supabase DB:        postgresql://postgres:***@db.vsnqtjqnmbzgoztkmalr.supabase.co
+Supabase DB:        postgresql://postgres:<PASSWORD>@db.vsnqtjqnmbzgoztkmalr.supabase.co
 Cron Job Status:    https://cron-job.org (dashboard)
 Firebase Console:   https://console.firebase.google.com
 Railway Dashboard:  https://railway.app (logs y variables)

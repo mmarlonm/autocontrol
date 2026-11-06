@@ -39,7 +39,7 @@ Una vez que Railway termina de crear el proyecto:
 5. **Agregar estas variables:**
 
 ```
-DATABASE_URL = postgresql://postgres:LHLPJuXvIyf3TZCg@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
+DATABASE_URL = postgresql://postgres:<PASSWORD>@db.vsnqtjqnmbzgoztkmalr.supabase.co:5432/postgres
 NODE_ENV = production
 JWT_SECRET = supersecretjwtkey_autocontrol_mexico_2026_production
 PYTHON_PATH = python3

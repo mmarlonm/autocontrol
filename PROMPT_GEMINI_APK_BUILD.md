@@ -25,8 +25,8 @@ Configurar y ejecutar el build de la APK firmada para Android usando EAS Build.
 ```
 📍 Path: C:\Users\chiva\.autocontrol-keys\autocontrol-release.jks
 🔑 Alias: autocontrol
-🔑 Store Password: autocontrol2026mexico
-🔑 Key Password: autocontrol2026mexico
+🔑 Store Password: <TU_CONTRASEÑA>
+🔑 Key Password: <TU_CONTRASEÑA>
 ✅ Validity: 10,000 days (~ 27 años)
 🔐 Algorithm: RSA 2048-bit
 👤 Common Name: AutoControl México
@@ -172,8 +172,8 @@ git status
 
 Guardar en LUGAR SEGURO (no en repo):
 ```
-🔑 Store Password: autocontrol2026mexico
-🔑 Key Password: autocontrol2026mexico
+🔑 Store Password: <TU_CONTRASEÑA>
+🔑 Key Password: <TU_CONTRASEÑA>
 🔑 Alias: autocontrol
 ```
 

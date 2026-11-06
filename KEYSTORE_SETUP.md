@@ -26,9 +26,9 @@ C:\Users\chiva\.autocontrol-keys\
 
 ```properties
 storeFile=C:/Users/chiva/.autocontrol-keys/autocontrol-release.jks
-storePassword=autocontrol2026mexico
+storePassword=<TU_CONTRASEÑA>
 keyAlias=autocontrol
-keyPassword=autocontrol2026mexico
+keyPassword=<TU_CONTRASEÑA>
 ```
 
 ---
@@ -71,9 +71,9 @@ El archivo `eas.json` especifica la ruta:
       "android": {
         "buildType": "apk",
         "keystorePath": "C:/Users/chiva/.autocontrol-keys/autocontrol-release.jks",
-        "keystorePassword": "autocontrol2026mexico",
+        "keystorePassword": "<TU_CONTRASEÑA>",
         "keyAlias": "autocontrol",
-        "keyPassword": "autocontrol2026mexico"
+        "keyPassword": "<TU_CONTRASEÑA>"
       }
     }
   }
@@ -86,9 +86,9 @@ El archivo `eas.json` especifica la ruta:
 # Android CLI (si se hace build local sin EAS)
 ./gradlew assembleRelease \
   -Pandroid.injected.signing.store.file=C:/Users/chiva/.autocontrol-keys/autocontrol-release.jks \
-  -Pandroid.injected.signing.store.password=autocontrol2026mexico \
+  -Pandroid.injected.signing.store.password=<TU_CONTRASEÑA> \
   -Pandroid.injected.signing.key.alias=autocontrol \
-  -Pandroid.injected.signing.key.password=autocontrol2026mexico
+  -Pandroid.injected.signing.key.password=<TU_CONTRASEÑA>
 ```
 
 ---
