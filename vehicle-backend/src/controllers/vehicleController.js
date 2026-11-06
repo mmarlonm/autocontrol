@@ -47,7 +47,7 @@ const VehicleController = {
 
       return res.status(201).json({
         success: true,
-        message: 'Vehículo registrado correctamente con información de tenencias y subsidios.',
+        message: 'Vehículo registrado correctamente.',
         data: {
           vehicle
         }
@@ -113,7 +113,7 @@ const VehicleController = {
         brand: vehicle.brand,
         model: vehicle.model,
         year: vehicle.year,
-        tenencia: {
+        tenencia: !vehicle.tenencia_id ? null : {
           year: vehicle.tenencia_year || currentYear,
           status: vehicle.tenencia_status || 'PENDIENTE',
           tenencia_base: vehicle.tenencia_amount !== undefined ? Number(vehicle.tenencia_amount) : 3200.0,

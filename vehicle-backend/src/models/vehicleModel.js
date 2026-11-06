@@ -1,4 +1,4 @@
-const { admin, collections } = require('../config/database');
+const { admin, db, collections } = require('../config/database');
 
 const VehicleModel = {
   // Un solo vehiculo por usuario (MVP)
@@ -17,17 +17,10 @@ const VehicleModel = {
     const vDoc = vSnapshot.docs[0];
     const vData = vDoc.data();
 
-    // Obtener la tenencia más reciente del vehículo
-    let tSnapshot = await collections.vehicleTenencias
+    // Obtener la tenencia más reciente del vehículo (null si aún no hay datos oficiales)
+    const tSnapshot = await collections.vehicleTenencias
       .where('vehicle_id', '==', vDoc.id)
       .get();
-
-    if (tSnapshot.empty) {
-      await VehicleModel.ensureDefaultTenencias(vDoc.id);
-      tSnapshot = await collections.vehicleTenencias
-        .where('vehicle_id', '==', vDoc.id)
-        .get();
-    }
 
     let tenencia = null;
     if (!tSnapshot.empty) {
@@ -54,9 +47,9 @@ const VehicleModel = {
       refrendo_amount: tenencia ? Number(tenencia.refrendo_amount || 0) : 0,
       total_due: tenencia ? Number(tenencia.total_due || 0) : 0,
       due_date: tenencia ? tenencia.due_date : null,
-      subsidy_active: tenencia ? (tenencia.subsidy_active !== undefined ? tenencia.subsidy_active : 1) : 1,
+      subsidy_active: tenencia ? (tenencia.subsidy_active !== undefined ? tenencia.subsidy_active : 0) : 0,
       subsidy_condition: tenencia ? tenencia.subsidy_condition : '',
-      tenencia_status: tenencia ? (tenencia.status || 'PENDIENTE') : 'PENDIENTE',
+      tenencia_status: tenencia ? (tenencia.status || 'PENDIENTE') : null,
       promotions: tenencia ? (tenencia.promotions || '') : '',
       last_scraped_at: tenencia ? tenencia.last_scraped_at : null
     };
@@ -117,9 +110,6 @@ const VehicleModel = {
         server_updated_at: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      // Asegurar que existan tenencias por defecto
-      await VehicleModel.ensureDefaultTenencias(vehicleId);
-
       // Registrar evento en historial
       try {
         await collections.vehicleHistory.add({
@@ -149,9 +139,6 @@ const VehicleModel = {
       });
 
       vehicleId = newDocRef.id;
-
-      // Crear registros iniciales de tenencias por defecto (año actual pendiente y año anterior pagado)
-      await VehicleModel.ensureDefaultTenencias(vehicleId);
 
       // Registrar evento en historial
       try {
@@ -207,36 +194,25 @@ const VehicleModel = {
     return { success: true, id: tenenciaDocId };
   },
 
-  ensureDefaultTenencias: async (vehicleId) => {
-    const currentYear = new Date().getFullYear();
+  // Migración: borra las tenencias inventadas que sembraba el antiguo ensureDefaultTenencias.
+  // Solo toca documentos que coinciden con el texto exacto sembrado en promotions Y subsidy_condition.
+  // shortcut: se ejecuta en cada arranque (1 query); quitar cuando ya no queden documentos sembrados.
+  purgeSeededTenencias: async () => {
+    const SEEDED_PROMOTIONS = ['Descuento 100% en tenencia vehiculo al corriente', 'Sin adeudos pendientes'];
+    const SEEDED_CONDITIONS = [
+      'Subsidio del 100% sobre tenencia cubriendo el refrendo antes del 31 de marzo',
+      'Pagado en tiempo con subsidio del 100%'
+    ];
 
-    // 1. Año actual (ej. 2026): PENDIENTE con subsidio y refrendo
-    await VehicleModel.upsertTenencia(vehicleId, {
-      year: currentYear,
-      tenencia_amount: 3200.0,
-      subsidy_amount: 3200.0,
-      refrendo_amount: 698.0,
-      total_due: 698.0,
-      due_date: `${currentYear}-03-31`,
-      subsidy_active: 1,
-      subsidy_condition: 'Subsidio del 100% sobre tenencia cubriendo el refrendo antes del 31 de marzo',
-      status: 'PENDIENTE',
-      promotions: 'Descuento 100% en tenencia vehiculo al corriente'
-    });
+    const snap = await collections.vehicleTenencias.where('promotions', 'in', SEEDED_PROMOTIONS).get();
+    const seeded = snap.docs.filter((d) => SEEDED_CONDITIONS.includes(d.data().subsidy_condition));
 
-    // 2. Año anterior (ej. 2025): PAGADO al corriente (historial previo sin adeudo)
-    await VehicleModel.upsertTenencia(vehicleId, {
-      year: currentYear - 1,
-      tenencia_amount: 3000.0,
-      subsidy_amount: 3000.0,
-      refrendo_amount: 0.0,
-      total_due: 0.0,
-      due_date: `${currentYear - 1}-03-31`,
-      subsidy_active: 1,
-      subsidy_condition: 'Pagado en tiempo con subsidio del 100%',
-      status: 'PAGADO',
-      promotions: 'Sin adeudos pendientes'
-    });
+    for (let i = 0; i < seeded.length; i += 400) {
+      const batch = db.batch();
+      seeded.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    return seeded.length;
   },
 
   getAllTenenciasByUserId: async (userId) => {
@@ -253,39 +229,10 @@ const VehicleModel = {
 
     const vehicleId = vSnapshot.docs[0].id;
 
-    // Obtener TODAS las tenencias del vehículo
-    let tSnapshot = await collections.vehicleTenencias
+    // Obtener TODAS las tenencias del vehículo (vacío si aún no hay datos oficiales)
+    const tSnapshot = await collections.vehicleTenencias
       .where('vehicle_id', '==', vehicleId)
       .get();
-
-    // Si no existen tenencias para este vehículo, sembramos automáticamente las tenencias
-    if (tSnapshot.empty) {
-      await VehicleModel.ensureDefaultTenencias(vehicleId);
-      tSnapshot = await collections.vehicleTenencias
-        .where('vehicle_id', '==', vehicleId)
-        .get();
-    } else {
-      // Verificar si falta el año anterior para el historial completo
-      const currentYear = new Date().getFullYear();
-      const existingYears = tSnapshot.docs.map((d) => Number(d.data().year));
-      if (!existingYears.includes(currentYear - 1)) {
-        await VehicleModel.upsertTenencia(vehicleId, {
-          year: currentYear - 1,
-          tenencia_amount: 3000.0,
-          subsidy_amount: 3000.0,
-          refrendo_amount: 0.0,
-          total_due: 0.0,
-          due_date: `${currentYear - 1}-03-31`,
-          subsidy_active: 1,
-          subsidy_condition: 'Pagado en tiempo con subsidio del 100%',
-          status: 'PAGADO',
-          promotions: 'Sin adeudos pendientes'
-        });
-        tSnapshot = await collections.vehicleTenencias
-          .where('vehicle_id', '==', vehicleId)
-          .get();
-      }
-    }
 
     // Ordenar por año descendente (más reciente primero)
     const tenencias = tSnapshot.docs

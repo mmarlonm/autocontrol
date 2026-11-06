@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const { initDatabase } = require('./config/database');
 const { initCronJobs } = require('./services/cronService');
+const VehicleModel = require('./models/vehicleModel');
 
 const authRoutes = require('./routes/authRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
@@ -62,7 +63,11 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initDatabase();
-    
+
+    VehicleModel.purgeSeededTenencias()
+      .then((n) => n && console.log(`[MIGRACION] ${n} tenencias sembradas (datos de prueba) eliminadas.`))
+      .catch((e) => console.warn('[MIGRACION] No se pudo limpiar tenencias sembradas:', e.message));
+
     // Iniciar el cron job diario exactamente a las 8:00 AM
     initCronJobs();
 
