@@ -31,8 +31,8 @@
           "color": "#18b0b8"
         }
       ],
-      "@react-native-firebase/app/app.plugin.js",
-      "@react-native-firebase/messaging/app.plugin.js"
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "extra": {
       "eas": {
