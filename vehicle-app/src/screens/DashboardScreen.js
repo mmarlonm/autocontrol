@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
   const [vehicle, setVehicle] = useState(null);
+  const [allTenencias, setAllTenencias] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,13 +31,22 @@ export default function DashboardScreen({ navigation }) {
         setVehicle(null);
       }
 
-      // 2. Cargar conteo de notificaciones
+      // 2. Cargar TODAS las tenencias
+      const resTen = await api.getAllTenencias();
+      if (resTen.success && resTen.data && resTen.data.tenencias) {
+        setAllTenencias(resTen.data.tenencias);
+      } else {
+        setAllTenencias([]);
+      }
+
+      // 3. Cargar conteo de notificaciones
       const resNotif = await api.getNotifications();
       if (resNotif.success && resNotif.data) {
         setUnreadCount(resNotif.data.unread_count || 0);
       }
     } catch (err) {
       setVehicle(null);
+      setAllTenencias([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -174,69 +184,82 @@ export default function DashboardScreen({ navigation }) {
             </View>
           ) : null}
 
-          {/* Tarjeta de Resumen Financiero */}
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.sectionTitle}>Desglose Oficial 2026</Text>
-              <TouchableOpacity
-                style={styles.syncBtn}
-                onPress={handleSyncNow}
-                disabled={syncing}
-              >
-                {syncing ? (
-                  <ActivityIndicator size="small" color="#18b0b8" />
-                ) : (
-                  <Text style={styles.syncBtnText}>🔄 Sincronizar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Tenencia Vehicular:</Text>
-              <Text style={styles.rowValue}>
-                ${Number(vehicle.tenencia_amount || 3450).toFixed(2)} MXN
-              </Text>
-            </View>
-
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: '#0e858c', fontWeight: '700' }]}>
-                Subsidio Aplicado (100%):
-              </Text>
-              <Text style={[styles.rowValue, { color: '#0e858c', fontWeight: '700' }]}>
-                -${Number(vehicle.subsidy_amount || 3450).toFixed(2)} MXN
-              </Text>
-            </View>
-
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Derecho Anual de Refrendo:</Text>
-              <Text style={styles.rowValue}>
-                ${Number(vehicle.refrendo_amount || 698).toFixed(2)} MXN
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total a Pagar:</Text>
-              <Text style={styles.totalAmount}>
-                ${Number(vehicle.total_due || 698).toFixed(2)} MXN
-              </Text>
-            </View>
-
-            <View style={styles.statusBadgeContainer}>
-              <View
-                style={[
-                  styles.badge,
-                  vehicle.tenencia_status === 'PAGADO' ? styles.badgeSuccess : styles.badgePending
-                ]}
-              >
-                <Text style={styles.badgeLabel}>
-                  ESTATUS: {vehicle.tenencia_status || 'PENDIENTE DE PAGO'}
-                </Text>
-              </View>
-              <Text style={styles.dueDateText}>Fecha Límite: {vehicle.due_date || '31 de marzo de 2026'}</Text>
-            </View>
+          {/* Botón de Sincronizar */}
+          <View style={styles.syncHeader}>
+            <Text style={styles.sectionTitle}>Adeudos Vehiculares</Text>
+            <TouchableOpacity
+              style={styles.syncBtn}
+              onPress={handleSyncNow}
+              disabled={syncing}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color="#18b0b8" />
+              ) : (
+                <Text style={styles.syncBtnText}>🔄 Sincronizar</Text>
+              )}
+            </TouchableOpacity>
           </View>
+
+          {/* Mostrar TODAS las tenencias de todos los años */}
+          {allTenencias && allTenencias.length > 0 ? (
+            allTenencias.map((tenencia, idx) => (
+              <View key={idx} style={styles.summaryCard}>
+                <View style={styles.yearHeader}>
+                  <Text style={styles.yearTitle}>Año {tenencia.year}</Text>
+                  <View
+                    style={[
+                      styles.badge,
+                      tenencia.status === 'PAGADO' ? styles.badgeSuccess : styles.badgePending
+                    ]}
+                  >
+                    <Text style={styles.badgeLabel}>
+                      {tenencia.status || 'PENDIENTE DE PAGO'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>Tenencia Vehicular:</Text>
+                  <Text style={styles.rowValue}>
+                    ${Number(tenencia.tenencia_base || 3200).toFixed(2)} MXN
+                  </Text>
+                </View>
+
+                {tenencia.subsidio_activo ? (
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: '#0e858c', fontWeight: '700' }]}>
+                      Subsidio Aplicado (100%):
+                    </Text>
+                    <Text style={[styles.rowValue, { color: '#0e858c', fontWeight: '700' }]}>
+                      -${Number(tenencia.subsidio_aplicado || 3200).toFixed(2)} MXN
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>Derecho Anual de Refrendo:</Text>
+                  <Text style={styles.rowValue}>
+                    ${Number(tenencia.refrendo_a_pagar || 698).toFixed(2)} MXN
+                  </Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total a Pagar:</Text>
+                  <Text style={styles.totalAmount}>
+                    ${Number(tenencia.total_a_pagar || 698).toFixed(2)} MXN
+                  </Text>
+                </View>
+
+                <Text style={styles.dueDateText}>Fecha Límite: {tenencia.fecha_limite || '31 de marzo'}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.summaryCard}>
+              <Text style={styles.noDataText}>Sin información de tenencias</Text>
+            </View>
+          )}
 
           {/* Promociones y Automatización */}
           <View style={styles.infoCard}>
@@ -459,6 +482,12 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 16,
   },
+  syncHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
   summaryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -467,6 +496,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  yearHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  yearTitle: {
+    fontSize: 16,
     fontWeight: '800',
     color: '#1e293b',
   },
@@ -570,5 +610,11 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 12,
     fontStyle: 'italic',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });

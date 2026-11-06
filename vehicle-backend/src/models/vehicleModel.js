@@ -209,6 +209,37 @@ const VehicleModel = {
     return { success: true, id: tenenciaDocId };
   },
 
+  getAllTenenciasByUserId: async (userId) => {
+    if (!userId) return [];
+
+    const vSnapshot = await collections.vehicles
+      .where('user_id', '==', String(userId))
+      .limit(1)
+      .get();
+
+    if (vSnapshot.empty) {
+      return [];
+    }
+
+    const vehicleId = vSnapshot.docs[0].id;
+
+    // Obtener TODAS las tenencias del vehículo
+    const tSnapshot = await collections.vehicleTenencias
+      .where('vehicle_id', '==', vehicleId)
+      .get();
+
+    if (tSnapshot.empty) {
+      return [];
+    }
+
+    // Ordenar por año descendente (más reciente primero)
+    const tenencias = tSnapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+
+    return tenencias;
+  },
+
   getAllVehiclesForScraping: async () => {
     const vSnapshot = await collections.vehicles.get();
     const results = [];

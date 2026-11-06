@@ -72,6 +72,8 @@ export const api = {
 
   getVehicleStatus: () => request('/vehicles/status'),
 
+  getAllTenencias: () => request('/vehicles/all-tenencias'),
+
   registerVehicle: (vehicleData) =>
     request('/vehicles', {
       method: 'POST',

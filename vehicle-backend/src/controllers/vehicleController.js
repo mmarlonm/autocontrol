@@ -92,7 +92,7 @@ const VehicleController = {
     }
   },
 
-  // Obtener estado detallado de adeudos, subsidios y promociones
+  // Obtener estado detallado de adeudos, subsidios y promociones (año más reciente)
   getVehicleStatus: async (req, res) => {
     try {
       const userId = req.user.id;
@@ -137,6 +137,56 @@ const VehicleController = {
       return res.status(500).json({
         success: false,
         message: 'Error al consultar estado de tenencias y subsidios.',
+        error: error.message
+      });
+    }
+  },
+
+  // Obtener TODAS las tenencias de todos los años
+  getAllTenencias: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const vehicle = await VehicleModel.findByUserId(userId);
+
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: 'No tienes ningún vehículo registrado.'
+        });
+      }
+
+      const allTenencias = await VehicleModel.getAllTenenciasByUserId(userId);
+
+      const formattedTenencias = allTenencias.map(t => ({
+        year: t.year,
+        status: t.status || 'PENDIENTE',
+        tenencia_base: t.tenencia_amount || 3200.0,
+        subsidio_aplicado: t.subsidy_active ? (t.subsidy_amount || 3200.0) : 0.0,
+        refrendo_a_pagar: t.refrendo_amount || 698.0,
+        total_a_pagar: t.total_due || 698.0,
+        fecha_limite: t.due_date || `${t.year}-03-31`,
+        subsidio_activo: !!t.subsidy_active,
+        condicion_subsidio: t.subsidy_condition || '',
+        promociones: t.promotions || '',
+        ultima_actualizacion: t.last_scraped_at
+      }));
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          plate: vehicle.plate,
+          state: vehicle.state,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          vehicle_year: vehicle.year,
+          tenencias: formattedTenencias
+        }
+      });
+    } catch (error) {
+      console.error('[VehicleController.getAllTenencias] Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al consultar todas las tenencias.',
         error: error.message
       });
     }
