@@ -116,7 +116,7 @@ export default function NotificationsScreen({ navigation }) {
           <Text style={styles.emptyIcon}>🔔</Text>
           <Text style={styles.emptyTitle}>Sin Notificaciones</Text>
           <Text style={styles.emptySubtitle}>
-            A las 8:00 AM el scraper revisa automáticamente las tenencias y subsidios oficiales de tu auto y te enviará notificaciones push automáticas.
+            Aquí aparecerán los avisos sobre tus tenencias y subsidios.
           </Text>
         </View>
       ) : (

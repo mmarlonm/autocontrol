@@ -28,7 +28,6 @@ export default function LoginScreen({ navigation }) {
     try {
       setSubmitting(true);
       await login(email.trim(), password);
-      navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error de acceso', error.message || 'Credenciales inválidas.');
     } finally {

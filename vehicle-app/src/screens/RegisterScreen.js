@@ -39,7 +39,6 @@ export default function RegisterScreen({ navigation }) {
     try {
       setSubmitting(true);
       await register(email.trim(), password);
-      navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error al registrarse', error.message || 'No se pudo crear la cuenta.');
     } finally {

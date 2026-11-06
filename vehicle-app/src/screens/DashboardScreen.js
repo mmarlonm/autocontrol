@@ -7,10 +7,13 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
-  Alert
+  Linking
 } from 'react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+const CDMX_PORTAL_URL = 'https://data.finanzas.cdmx.gob.mx/consulta_adeudos';
+const isCdmx = (state) => !state || /CDMX|CIUDAD DE M/i.test(state);
 
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -19,7 +22,6 @@ export default function DashboardScreen({ navigation }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
@@ -76,37 +78,6 @@ export default function DashboardScreen({ navigation }) {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
-  };
-
-  const handleSyncNow = async () => {
-    if (!vehicle) {
-      Alert.alert('Aviso', 'Primero debes registrar una placa vehicular.');
-      return;
-    }
-
-    try {
-      setSyncing(true);
-      const response = await fetch(`${api.registerVehicle ? 'http://localhost:3000/api' : 'http://localhost:3000/api'}/scraper/trigger`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await require('../services/storage').storageService.getToken()}`
-        },
-        body: JSON.stringify({ plate: vehicle.plate })
-      }).then(r => r.json());
-
-      if (response.success) {
-        Alert.alert('Sincronización Exitosa', 'Información actualizada directamente de los portales gubernamentales.');
-        await fetchDashboardData();
-      } else {
-        Alert.alert('Aviso', response.message || 'Se aplicó la última información guardada.');
-      }
-    } catch (e) {
-      Alert.alert('Sincronización Completada', 'Datos actualizados con éxito.');
-      await fetchDashboardData();
-    } finally {
-      setSyncing(false);
-    }
   };
 
   if (loading) {
@@ -210,29 +181,23 @@ export default function DashboardScreen({ navigation }) {
             </View>
           ) : null}
 
-          {/* Botón de Sincronizar */}
           <View style={styles.syncHeader}>
             <Text style={styles.sectionTitle}>Adeudos Vehiculares</Text>
-            <TouchableOpacity
-              style={styles.syncBtn}
-              onPress={handleSyncNow}
-              disabled={syncing}
-            >
-              {syncing ? (
-                <ActivityIndicator size="small" color="#18b0b8" />
-              ) : (
-                <Text style={styles.syncBtnText}>🔄 Sincronizar</Text>
-              )}
-            </TouchableOpacity>
+            {isCdmx(vehicle.state) ? (
+              <TouchableOpacity style={styles.syncBtn} onPress={() => Linking.openURL(CDMX_PORTAL_URL)}>
+                <Text style={styles.syncBtnText}>Portal oficial</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {/* Mostrar TODAS las tenencias de todos los años */}
           {allTenencias && allTenencias.length === 0 ? (
             <View style={styles.emptyStateCard}>
               <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyTitle}>Sin adeudos registrados</Text>
+              <Text style={styles.emptyTitle}>Aún no hay adeudos consultados</Text>
               <Text style={styles.emptyDesc}>
-                Aún no hay información de tenencias. Esto se actualizará automáticamente cada mañana a las 8 AM.
+                Todavía no tenemos datos oficiales de la placa {vehicle.plate}.
+                {isCdmx(vehicle.state) ? ' Puedes consultarlos en el portal de Finanzas CDMX.' : ''}
               </Text>
             </View>
           ) : (
@@ -256,7 +221,7 @@ export default function DashboardScreen({ navigation }) {
                   <View style={styles.row}>
                     <Text style={styles.rowLabel}>Tenencia Vehicular:</Text>
                     <Text style={styles.rowValue}>
-                      ${Number(tenencia.tenencia_base || 3200).toFixed(2)} MXN
+                      ${Number(tenencia.tenencia_base ?? 0).toFixed(2)} MXN
                     </Text>
                   </View>
 
@@ -266,7 +231,7 @@ export default function DashboardScreen({ navigation }) {
                         Subsidio Aplicado (100%):
                       </Text>
                       <Text style={[styles.rowValue, { color: '#0e858c', fontWeight: '700' }]}>
-                        -${Number(tenencia.subsidio_aplicado || 3200).toFixed(2)} MXN
+                        -${Number(tenencia.subsidio_aplicado ?? 0).toFixed(2)} MXN
                       </Text>
                     </View>
                   ) : null}
@@ -274,7 +239,7 @@ export default function DashboardScreen({ navigation }) {
                   <View style={styles.row}>
                     <Text style={styles.rowLabel}>Derecho Anual de Refrendo:</Text>
                     <Text style={styles.rowValue}>
-                      ${Number(tenencia.refrendo_a_pagar !== undefined ? tenencia.refrendo_a_pagar : (tenencia.status === 'PAGADO' ? 0 : 698)).toFixed(2)} MXN
+                      ${Number(tenencia.refrendo_a_pagar ?? 0).toFixed(2)} MXN
                     </Text>
                   </View>
 
@@ -283,7 +248,7 @@ export default function DashboardScreen({ navigation }) {
                   <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>Total a Pagar:</Text>
                     <Text style={styles.totalAmount}>
-                      ${Number(tenencia.total_a_pagar !== undefined ? tenencia.total_a_pagar : (tenencia.status === 'PAGADO' ? 0 : 698)).toFixed(2)} MXN
+                      ${Number(tenencia.total_a_pagar ?? 0).toFixed(2)} MXN
                     </Text>
                   </View>
 
@@ -292,17 +257,6 @@ export default function DashboardScreen({ navigation }) {
               ))
             )
           )}
-
-          {/* Promociones y Automatización */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Automatización Inteligente</Text>
-            <Text style={styles.infoText}>
-              🤖 Nuestro scraper Python se ejecuta todos los días a las 8:00 AM para verificar que tu subsidio continúe activo y avisarte antes de cualquier vencimiento.
-            </Text>
-            <Text style={styles.lastScrapedText}>
-              Última verificación del scraper: {vehicle.last_scraped_at ? new Date(vehicle.last_scraped_at).toLocaleString() : 'Reciente'}
-            </Text>
-          </View>
         </View>
       )}
     </ScrollView>
@@ -616,32 +570,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     fontWeight: '600',
-  },
-  infoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#64748b',
-    lineHeight: 18,
-  },
-  lastScrapedText: {
-    fontSize: 11,
-    color: '#94a3b8',
-    marginTop: 12,
-    fontStyle: 'italic',
   },
   noDataText: {
     fontSize: 14,

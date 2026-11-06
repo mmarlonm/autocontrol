@@ -86,7 +86,7 @@ export default function VehicleScreen({ navigation }) {
         Alert.alert('¡Actualizado!', 'La información de tu vehículo ha sido actualizada.');
       } else {
         await api.registerVehicle(payload);
-        Alert.alert('¡Registrado!', 'Vehículo registrado correctamente. El scraper sincronizará adeudos y subsidios a las 8:00 AM.');
+        Alert.alert('¡Registrado!', 'Vehículo registrado correctamente.');
       }
 
       navigation.navigate('Dashboard');

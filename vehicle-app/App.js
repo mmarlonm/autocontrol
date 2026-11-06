@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -32,53 +34,69 @@ Notifications.setNotificationHandler({
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const TABS = {
+  Dashboard: { title: 'Inicio', icon: 'home' },
+  Vehicle: { title: 'Vehículo', icon: 'car' },
+  History: { title: 'Historial', icon: 'time' },
+  Notifications: { title: 'Alertas', icon: 'notifications' },
+  Profile: { title: 'Perfil', icon: 'person' },
+};
+
 const TabNavigator = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        title: TABS[route.name].title,
         tabBarActiveTintColor: '#18b0b8',
         tabBarInactiveTintColor: '#94a3b8',
+        tabBarHideOnKeyboard: true,
+        // Barra flotante: píldora con márgenes sobre el fondo de la app
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#e2e8f0',
-          borderTopWidth: 1,
-          paddingBottom: 8,
+          height: 64,
+          marginHorizontal: 16,
+          marginBottom: Math.max(insets.bottom, 12),
           paddingTop: 8,
-          height: 70,
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 8
+          paddingBottom: 8,
+          borderRadius: 24,
+          borderTopWidth: 0,
+          backgroundColor: '#ffffff',
+          elevation: 10,
+          shadowColor: '#0f172a',
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 4
-        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarIcon: ({ focused, color }) => {
-          let iconName;
-          if (route.name === 'Dashboard') iconName = focused ? '📊' : '📋';
-          else if (route.name === 'Vehicle') iconName = focused ? '🚗' : '🚙';
-          else if (route.name === 'History') iconName = focused ? '📅' : '📆';
-          else if (route.name === 'Notifications') iconName = focused ? '🔔' : '🔕';
-          else if (route.name === 'Profile') iconName = focused ? '👤' : '👥';
-          else if (route.name === 'Settings') iconName = focused ? '⚙️' : '🔧';
-          else if (route.name === 'Help') iconName = focused ? '❓' : '❔';
-          
-          return <Text style={{ fontSize: 24 }}>{iconName}</Text>;
-        }
+          const { icon } = TABS[route.name];
+          return <Ionicons name={focused ? icon : `${icon}-outline`} size={24} color={color} />;
+        },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Inicio' }} />
-      <Tab.Screen name="Vehicle" component={VehicleScreen} options={{ title: 'Vehículo' }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'Historial' }} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificaciones' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configuración' }} />
-      <Tab.Screen name="Help" component={HelpScreen} options={{ title: 'Ayuda' }} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Vehicle" component={VehicleScreen} />
+      <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
+};
+
+const navTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: '#f5f9f9' },
+};
+
+// Settings y Help traen su propio título en pantalla; el header solo aporta el botón de regreso
+const subScreenOptions = {
+  headerShown: true,
+  title: '',
+  headerShadowVisible: false,
+  headerStyle: { backgroundColor: '#f5f9f9' },
+  headerTintColor: '#18b0b8',
 };
 
 function RootNavigator() {
@@ -114,27 +132,21 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <StatusBar style="dark" />
-      <Stack.Navigator
-        initialRouteName={isAuthenticated ? "MainTabs" : "LoginStack"}
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen 
-          name="LoginStack" 
-          component={LoginScreen} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="RegisterStack" 
-          component={RegisterScreen} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="MainTabs" 
-          component={TabNavigator}
-          options={{ headerShown: false }}
-        />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isAuthenticated ? (
+          <>
+            <Stack.Screen name="MainTabs" component={TabNavigator} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={subScreenOptions} />
+            <Stack.Screen name="Help" component={HelpScreen} options={subScreenOptions} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="LoginStack" component={LoginScreen} />
+            <Stack.Screen name="RegisterStack" component={RegisterScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
