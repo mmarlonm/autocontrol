@@ -14,7 +14,11 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import VehicleScreen from './src/screens/VehicleScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import HelpScreen from './src/screens/HelpScreen';
 
 // Configurar comportamiento de notificaciones locales / push en primer plano
 Notifications.setNotificationHandler({
@@ -28,64 +32,54 @@ Notifications.setNotificationHandler({
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function AppTabs() {
+const TabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#ffffff',
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: '#f1f5f9',
-        },
-        headerTitleStyle: {
-          fontWeight: '800',
-          fontSize: 18,
-          color: '#0f172a',
-        },
+      screenOptions={({ route }) => ({
+        headerShown: false,
         tabBarActiveTintColor: '#18b0b8',
         tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#f1f5f9',
-          paddingBottom: 6,
-          paddingTop: 6,
-          height: 60,
+          backgroundColor: '#fff',
+          borderTopColor: '#e2e8f0',
+          borderTopWidth: 1,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 70,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOpacity: 0.1,
+          shadowRadius: 8
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '700',
+          fontWeight: '600',
+          marginTop: 4
         },
-      }}
+        tabBarIcon: ({ focused, color }) => {
+          let iconName;
+          if (route.name === 'Dashboard') iconName = focused ? '📊' : '📋';
+          else if (route.name === 'Vehicle') iconName = focused ? '🚗' : '🚙';
+          else if (route.name === 'History') iconName = focused ? '📅' : '📆';
+          else if (route.name === 'Notifications') iconName = focused ? '🔔' : '🔕';
+          else if (route.name === 'Profile') iconName = focused ? '👤' : '👥';
+          else if (route.name === 'Settings') iconName = focused ? '⚙️' : '🔧';
+          else if (route.name === 'Help') iconName = focused ? '❓' : '❔';
+          
+          return <Text style={{ fontSize: 24 }}>{iconName}</Text>;
+        }
+      })}
     >
-      <Tab.Screen
-        name="Inicio"
-        component={DashboardScreen}
-        options={{
-          headerTitle: 'AutoControl México',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>📊</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Vehículo"
-        component={VehicleScreen}
-        options={{
-          headerTitle: 'Gestión de Placa',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🚗</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Notificaciones"
-        component={NotificationsScreen}
-        options={{
-          headerTitle: 'Mis Alertas',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🔔</Text>,
-        }}
-      />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Vehicle" component={VehicleScreen} options={{ title: 'Vehículo' }} />
+      <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'Historial' }} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificaciones' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configuración' }} />
+      <Tab.Screen name="Help" component={HelpScreen} options={{ title: 'Ayuda' }} />
     </Tab.Navigator>
   );
-}
+};
 
 function RootNavigator() {
   const { isAuthenticated, loading, updatePushToken } = useAuth();
@@ -122,18 +116,26 @@ function RootNavigator() {
   return (
     <NavigationContainer>
       <StatusBar style="dark" />
-      {isAuthenticated ? (
-        <AppTabs />
-      ) : (
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </Stack.Navigator>
-      )}
+      <Stack.Navigator
+        initialRouteName={isAuthenticated ? "MainTabs" : "LoginStack"}
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen 
+          name="LoginStack" 
+          component={LoginScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="RegisterStack" 
+          component={RegisterScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="MainTabs" 
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

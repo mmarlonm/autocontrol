@@ -28,6 +28,7 @@ export default function LoginScreen({ navigation }) {
     try {
       setSubmitting(true);
       await login(email.trim(), password);
+      navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error de acceso', error.message || 'Credenciales inválidas.');
     } finally {
@@ -89,7 +90,7 @@ export default function LoginScreen({ navigation }) {
 
           <View style={styles.footerLinkContainer}>
             <Text style={styles.footerText}>¿No tienes cuenta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity onPress={() => navigation.navigate('RegisterStack')}>
               <Text style={styles.linkText}>Regístrate aquí</Text>
             </TouchableOpacity>
           </View>

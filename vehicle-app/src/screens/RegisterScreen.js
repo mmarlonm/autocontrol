@@ -39,6 +39,7 @@ export default function RegisterScreen({ navigation }) {
     try {
       setSubmitting(true);
       await register(email.trim(), password);
+      navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error al registrarse', error.message || 'No se pudo crear la cuenta.');
     } finally {
@@ -106,7 +107,7 @@ export default function RegisterScreen({ navigation }) {
 
           <View style={styles.footerLinkContainer}>
             <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity onPress={() => navigation.navigate('LoginStack')}>
               <Text style={styles.linkText}>Inicia Sesión</Text>
             </TouchableOpacity>
           </View>

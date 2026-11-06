@@ -139,7 +139,7 @@ export default function DashboardScreen({ navigation }) {
       {unreadCount > 0 ? (
         <TouchableOpacity
           style={styles.unreadBanner}
-          onPress={() => navigation.navigate('Notificaciones')}
+          onPress={() => navigation.navigate('Notifications')}
         >
           <Text style={styles.unreadIcon}>🔔</Text>
           <Text style={styles.unreadText}>
@@ -173,7 +173,7 @@ export default function DashboardScreen({ navigation }) {
           </Text>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate('Vehículo')}
+            onPress={() => navigation.navigate('Vehicle')}
           >
             <Text style={styles.primaryButtonText}>Registrar mi Placa</Text>
           </TouchableOpacity>

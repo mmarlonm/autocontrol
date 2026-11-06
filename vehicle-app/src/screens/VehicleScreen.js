@@ -89,7 +89,7 @@ export default function VehicleScreen({ navigation }) {
         Alert.alert('¡Registrado!', 'Vehículo registrado correctamente. El scraper sincronizará adeudos y subsidios a las 8:00 AM.');
       }
 
-      navigation.navigate('Inicio');
+      navigation.navigate('Dashboard');
     } catch (error) {
       Alert.alert('Error', error.message || 'No se pudo guardar el vehículo.');
     } finally {
