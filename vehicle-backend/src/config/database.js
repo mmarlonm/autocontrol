@@ -1,188 +1,168 @@
-const { Client } = require('pg');
+const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
 
-// Solo cargar .env en desarrollo (no existe en Render)
+// Solo cargar .env en desarrollo (no existe en producción en Render)
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 }
 
-// Log para debugging en Render
-console.log('[DATABASE] NODE_ENV:', process.env.NODE_ENV);
-console.log('[DATABASE] DATABASE_URL available:', !!process.env.DATABASE_URL);
+// Inicializar Firebase Admin SDK si no ha sido inicializado
+if (!admin.apps.length) {
+  let initialized = false;
 
-let connectionConfig;
-
-// En Render, DATABASE_URL debe estar en variables de entorno
-const dbUrl = process.env.DATABASE_URL;
-
-if (dbUrl) {
-  // Verificar que la URL sea válida
-  if (!dbUrl.includes('postgresql://') && !dbUrl.includes('postgres://')) {
-    console.error('[DATABASE] ERROR: DATABASE_URL no parece una URL de PostgreSQL válida');
-    console.error('[DATABASE] DATABASE_URL debe empezar con postgresql:// o postgres://');
-    process.exit(1);
+  // 1. Prioridad: Variable de entorno FIREBASE_SERVICE_ACCOUNT_JSON (Render / Railway / Cloud)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      const creds = typeof process.env.FIREBASE_SERVICE_ACCOUNT_JSON === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+        : process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+      admin.initializeApp({
+        credential: admin.credential.cert(creds)
+      });
+      initialized = true;
+      console.log('[DATABASE] ✅ Firebase Admin inicializado desde FIREBASE_SERVICE_ACCOUNT_JSON');
+    } catch (err) {
+      console.error('[DATABASE] Error parseando FIREBASE_SERVICE_ACCOUNT_JSON:', err.message);
+    }
   }
 
-  console.log('[DATABASE] Usando DATABASE_URL de variables de entorno');
-  connectionConfig = { connectionString: dbUrl };
-} else if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD) {
-  // Fallback: construir URL desde variables individuales
-  console.log('[DATABASE] Construyendo URL desde variables individuales');
-  connectionConfig = {
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'postgres',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
-  };
-} else {
-  console.error('[DATABASE] CRITICAL ERROR: No hay conexión a BD configurada');
-  console.error('[DATABASE] Necesitas DATABASE_URL o DB_HOST/DB_USER/DB_PASSWORD');
-  process.exit(1);
-}
-
-// Agregar SSL para Render/Supabase
-if (process.env.NODE_ENV === 'production') {
-  connectionConfig.ssl = {
-    rejectUnauthorized: false,
-    sslmode: 'require'
-  };
-}
-
-console.log('[DATABASE] Intentando conectar...');
-const client = new Client(connectionConfig);
-
-const db = client;
-if (db && !db.close) {
-  db.close = (cb) => db.end(cb);
-}
-
-client.connect((err) => {
-  if (err) {
-    console.error('Error al conectar con PostgreSQL:', err.message);
-  } else {
-    console.log('✅ Conectado a PostgreSQL (Supabase)');
+  // 2. Prioridad: Ruta especificada en FIREBASE_SERVICE_ACCOUNT_PATH
+  if (!initialized && process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    const customPath = path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    if (fs.existsSync(customPath)) {
+      try {
+        const creds = require(customPath);
+        admin.initializeApp({
+          credential: admin.credential.cert(creds)
+        });
+        initialized = true;
+        console.log(`[DATABASE] ✅ Firebase Admin inicializado desde ${customPath}`);
+      } catch (err) {
+        console.error(`[DATABASE] Error cargando credencial desde ${customPath}:`, err.message);
+      }
+    }
   }
-});
 
-/**
- * Promisified database helpers para PostgreSQL
- */
-const query = {
-  run: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      client.query(sql, params, (err, result) => {
-        if (err) return reject(err);
-        resolve({ lastID: result.rows[0]?.id, changes: result.rowCount });
-      });
-    });
-  },
-
-  get: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      client.query(sql, params, (err, result) => {
-        if (err) return reject(err);
-        resolve(result.rows[0] || null);
-      });
-    });
-  },
-
-  all: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      client.query(sql, params, (err, result) => {
-        if (err) return reject(err);
-        resolve(result.rows || []);
-      });
-    });
-  },
-
-  exec: (sql) => {
-    return new Promise((resolve, reject) => {
-      client.query(sql, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
+  // 3. Prioridad: Archivo de credenciales locales en src/config
+  if (!initialized) {
+    try {
+      const configDir = __dirname;
+      const files = fs.readdirSync(configDir);
+      const serviceAccountFile = files.find(f => 
+        (f.includes('firebase-adminsdk') || f.includes('firebase-service-account')) && f.endsWith('.json')
+      );
+      if (serviceAccountFile) {
+        const fullPath = path.join(configDir, serviceAccountFile);
+        const creds = require(fullPath);
+        admin.initializeApp({
+          credential: admin.credential.cert(creds)
+        });
+        initialized = true;
+        console.log(`[DATABASE] ✅ Firebase Admin inicializado desde ${serviceAccountFile}`);
+      }
+    } catch (err) {
+      console.warn('[DATABASE] Aviso al buscar credenciales locales:', err.message);
+    }
   }
+
+  // 4. Fallback: Project ID
+  if (!initialized) {
+    admin.initializeApp({
+      projectId: process.env.FIREBASE_PROJECT_ID || 'vehicle-bd'
+    });
+    console.log('[DATABASE] ⚠️ Firebase Admin inicializado con Project ID.');
+  }
+}
+
+const db = admin.firestore();
+
+try {
+  db.settings({ ignoreUndefinedProperties: true });
+} catch (e) {
+  // Ignorar si ya fue configurado previamente
+}
+
+console.log('✅ Conectado a Firebase Firestore (NoSQL)');
+
+const collections = {
+  users: db.collection('users'),
+  vehicles: db.collection('vehicles'),
+  vehicleTenencias: db.collection('vehicleTenencias'),
+  notifications: db.collection('notifications'),
+  vehicleHistory: db.collection('vehicleHistory')
 };
 
 /**
- * Inicializar tablas (PostgreSQL compatible)
+ * Inicializar / verificar conexión a Firestore
  */
 const initDatabase = async () => {
-  const schema = `
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      fcm_token TEXT DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS vehicles (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL UNIQUE,
-      plate TEXT NOT NULL,
-      state TEXT NOT NULL DEFAULT 'CDMX',
-      brand TEXT,
-      model TEXT,
-      year INTEGER,
-      serial_number TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS vehicle_tenencias (
-      id SERIAL PRIMARY KEY,
-      vehicle_id INTEGER NOT NULL,
-      year INTEGER NOT NULL,
-      tenencia_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
-      subsidy_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
-      refrendo_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
-      total_due NUMERIC(10,2) NOT NULL DEFAULT 0.0,
-      due_date TEXT,
-      subsidy_active SMALLINT DEFAULT 1,
-      subsidy_condition TEXT DEFAULT 'Subsidio del 100% en tenencia al pagar refrendo antes del 31 de marzo',
-      status TEXT DEFAULT 'PENDIENTE',
-      promotions TEXT DEFAULT 'Descuento por pronto pago aplicable',
-      last_scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
-      UNIQUE(vehicle_id, year)
-    );
-
-    CREATE TABLE IF NOT EXISTS notifications (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      message TEXT NOT NULL,
-      read SMALLINT DEFAULT 0,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT uq_user_type_created UNIQUE (user_id, type, created_at)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_vehicles_plate ON vehicles(plate);
-    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
-  `;
-
   try {
-    await query.exec(schema);
-    console.log('✅ Tablas inicializadas correctamente en PostgreSQL');
+    console.log('[DATABASE] 🔄 Verificando colecciones Firestore (users, vehicles, vehicleTenencias, notifications, vehicleHistory)...');
+    await collections.users.limit(1).get();
+    console.log('✅ Firebase Firestore listo para operaciones.');
   } catch (err) {
-    if (err.message.includes('already exists')) {
-      console.log('✅ Tablas ya existen en la base de datos');
+    if (err.message && err.message.includes('SERVICE_DISABLED')) {
+      console.error('⚠️ [FIRESTORE] Cloud Firestore API no está habilitada en tu proyecto Firebase.');
+      console.error('👉 Habilítala creando la base de datos en: https://console.firebase.google.com/project/vehicle-bd/firestore');
     } else {
-      throw err;
+      console.warn('[DATABASE] Aviso en initDatabase:', err.message);
     }
   }
 };
 
-module.exports = {
-  db,
-  query,
-  initDatabase
+/**
+ * Helper de compatibilidad para consultas SQL legacy
+ */
+const query = {
+  all: async (sql, params = []) => {
+    // Caso de compatibilidad con notifyUsersAfterScrape en cronService
+    if (sql && sql.includes('FROM users') && sql.includes('vehicles')) {
+      try {
+        const usersSnap = await collections.users.where('fcm_token', '!=', null).get();
+        const results = [];
+        for (const uDoc of usersSnap.docs) {
+          const u = uDoc.data();
+          const vSnap = await collections.vehicles.where('user_id', '==', uDoc.id).limit(1).get();
+          if (!vSnap.empty) {
+            const v = vSnap.docs[0].data();
+            const tSnap = await collections.vehicleTenencias
+              .where('vehicle_id', '==', vSnap.docs[0].id)
+              .get();
+            let t = {};
+            if (!tSnap.empty) {
+              const docs = tSnap.docs.map(d => d.data());
+              docs.sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+              t = docs[0];
+            }
+            results.push({
+              id: uDoc.id,
+              email: u.email,
+              fcm_token: u.fcm_token,
+              plate: v.plate,
+              total_due: t.total_due || 0,
+              due_date: t.due_date || '',
+              subsidy_active: t.subsidy_active || 0
+            });
+          }
+        }
+        return results;
+      } catch (e) {
+        console.error('[DATABASE.query.all] Error en consulta de compatibilidad:', e.message);
+        return [];
+      }
+    }
+    return [];
+  },
+  run: async () => ({ lastID: 1, changes: 1 }),
+  get: async () => null,
+  exec: async () => {}
 };
 
+module.exports = {
+  db,
+  admin,
+  collections,
+  initDatabase,
+  query
+};

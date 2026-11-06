@@ -18,7 +18,6 @@
     "firebase-admin": "^12.7.0",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
-    "pg": "^8.23.1",
     "sqlite3": "^5.1.7"
   }
 }

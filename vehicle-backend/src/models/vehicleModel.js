@@ -1,60 +1,148 @@
-const { query } = require('../config/database');
+const { admin, collections } = require('../config/database');
 
 const VehicleModel = {
   // Un solo vehiculo por usuario (MVP)
   findByUserId: async (userId) => {
-    const sql = `
-      SELECT v.*, 
-             t.id as tenencia_id,
-             t.year as tenencia_year,
-             t.tenencia_amount,
-             t.subsidy_amount,
-             t.refrendo_amount,
-             t.total_due,
-             t.due_date,
-             t.subsidy_active,
-             t.subsidy_condition,
-             t.status as tenencia_status,
-             t.promotions,
-             t.last_scraped_at
-      FROM vehicles v
-      LEFT JOIN vehicle_tenencias t ON v.id = t.vehicle_id
-      WHERE v.user_id = ?
-      ORDER BY t.year DESC
-      LIMIT 1
-    `;
-    return query.get(sql, [userId]);
+    if (!userId) return null;
+
+    const vSnapshot = await collections.vehicles
+      .where('user_id', '==', String(userId))
+      .limit(1)
+      .get();
+
+    if (vSnapshot.empty) {
+      return null;
+    }
+
+    const vDoc = vSnapshot.docs[0];
+    const vData = vDoc.data();
+
+    // Obtener la tenencia más reciente del vehículo
+    const tSnapshot = await collections.vehicleTenencias
+      .where('vehicle_id', '==', vDoc.id)
+      .get();
+
+    let tenencia = null;
+    if (!tSnapshot.empty) {
+      const tenencias = tSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      tenencias.sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+      tenencia = tenencias[0];
+    }
+
+    return {
+      id: vDoc.id,
+      user_id: vData.user_id,
+      plate: vData.plate,
+      state: vData.state,
+      brand: vData.brand,
+      model: vData.model,
+      year: vData.year,
+      serial_number: vData.serial_number,
+      created_at: vData.created_at,
+      updated_at: vData.updated_at,
+      tenencia_id: tenencia ? tenencia.id : null,
+      tenencia_year: tenencia ? tenencia.year : null,
+      tenencia_amount: tenencia ? Number(tenencia.tenencia_amount || 0) : 0,
+      subsidy_amount: tenencia ? Number(tenencia.subsidy_amount || 0) : 0,
+      refrendo_amount: tenencia ? Number(tenencia.refrendo_amount || 0) : 0,
+      total_due: tenencia ? Number(tenencia.total_due || 0) : 0,
+      due_date: tenencia ? tenencia.due_date : null,
+      subsidy_active: tenencia ? (tenencia.subsidy_active !== undefined ? tenencia.subsidy_active : 1) : 1,
+      subsidy_condition: tenencia ? tenencia.subsidy_condition : '',
+      tenencia_status: tenencia ? (tenencia.status || 'PENDIENTE') : 'PENDIENTE',
+      promotions: tenencia ? (tenencia.promotions || '') : '',
+      last_scraped_at: tenencia ? tenencia.last_scraped_at : null
+    };
   },
 
   findByPlate: async (plate) => {
-    const sql = `SELECT * FROM vehicles WHERE UPPER(plate) = UPPER(?)`;
-    return query.get(sql, [plate.trim()]);
+    if (!plate) return null;
+    const cleanPlate = plate.toUpperCase().trim();
+
+    const snapshot = await collections.vehicles
+      .where('plate', '==', cleanPlate)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data()
+    };
   },
 
   createOrUpdate: async (userId, vehicleData) => {
-    const { plate, state = 'CDMX', brand = '', model = '', year = new Date().getFullYear(), serial_number = '' } = vehicleData;
+    const {
+      plate,
+      state = 'CDMX',
+      brand = '',
+      model = '',
+      year = new Date().getFullYear(),
+      serial_number = ''
+    } = vehicleData;
+
     const cleanPlate = plate.toUpperCase().trim();
+    const nowIso = new Date().toISOString();
 
-    const existing = await query.get(`SELECT id FROM vehicles WHERE user_id = ?`, [userId]);
+    const existingSnap = await collections.vehicles
+      .where('user_id', '==', String(userId))
+      .limit(1)
+      .get();
 
-    if (existing) {
-      const updateSql = `
-        UPDATE vehicles
-        SET plate = ?, state = ?, brand = ?, model = ?, year = ?, serial_number = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?
-      `;
-      await query.run(updateSql, [cleanPlate, state, brand, model, year, serial_number, userId]);
-      return VehicleModel.findByUserId(userId);
+    let vehicleId;
+
+    if (!existingSnap.empty) {
+      const vDoc = existingSnap.docs[0];
+      vehicleId = vDoc.id;
+
+      await vDoc.ref.set({
+        plate: cleanPlate,
+        state,
+        brand,
+        model,
+        year: Number(year),
+        serial_number,
+        updated_at: nowIso,
+        server_updated_at: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // Registrar evento en historial
+      try {
+        await collections.vehicleHistory.add({
+          vehicle_id: vehicleId,
+          user_id: String(userId),
+          plate: cleanPlate,
+          action: 'UPDATE',
+          created_at: nowIso,
+          server_timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (hErr) {
+        // Historial opcional
+      }
     } else {
-      const insertSql = `
-        INSERT INTO vehicles (user_id, plate, state, brand, model, year, serial_number)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `;
-      const res = await query.run(insertSql, [userId, cleanPlate, state, brand, model, year, serial_number]);
-      
+      const newDocRef = await collections.vehicles.add({
+        user_id: String(userId),
+        plate: cleanPlate,
+        state,
+        brand,
+        model,
+        year: Number(year),
+        serial_number,
+        created_at: nowIso,
+        updated_at: nowIso,
+        server_created_at: admin.firestore.FieldValue.serverTimestamp(),
+        server_updated_at: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      vehicleId = newDocRef.id;
+
       // Crear registro inicial de tenencia por defecto para el año corriente
       const currentYear = new Date().getFullYear();
-      await VehicleModel.upsertTenencia(res.lastID, {
+      await VehicleModel.upsertTenencia(vehicleId, {
         year: currentYear,
         tenencia_amount: 3200.0,
         subsidy_amount: 3200.0,
@@ -67,8 +155,22 @@ const VehicleModel = {
         promotions: 'Descuento 100% en tenencia vehiculo al corriente'
       });
 
-      return VehicleModel.findByUserId(userId);
+      // Registrar evento en historial
+      try {
+        await collections.vehicleHistory.add({
+          vehicle_id: vehicleId,
+          user_id: String(userId),
+          plate: cleanPlate,
+          action: 'CREATE',
+          created_at: nowIso,
+          server_timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (hErr) {
+        // Historial opcional
+      }
     }
+
+    return VehicleModel.findByUserId(userId);
   },
 
   upsertTenencia: async (vehicleId, tenenciaData) => {
@@ -85,39 +187,65 @@ const VehicleModel = {
       promotions = ''
     } = tenenciaData;
 
-    const sql = `
-      INSERT INTO vehicle_tenencias (
-        vehicle_id, year, tenencia_amount, subsidy_amount, refrendo_amount,
-        total_due, due_date, subsidy_active, subsidy_condition, status, promotions, last_scraped_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(vehicle_id, year) DO UPDATE SET
-        tenencia_amount = excluded.tenencia_amount,
-        subsidy_amount = excluded.subsidy_amount,
-        refrendo_amount = excluded.refrendo_amount,
-        total_due = excluded.total_due,
-        due_date = excluded.due_date,
-        subsidy_active = excluded.subsidy_active,
-        subsidy_condition = excluded.subsidy_condition,
-        status = excluded.status,
-        promotions = excluded.promotions,
-        last_scraped_at = CURRENT_TIMESTAMP
-    `;
+    const nowIso = new Date().toISOString();
+    const tenenciaDocId = `${vehicleId}_${year}`;
 
-    return query.run(sql, [
-      vehicleId, year, tenencia_amount, subsidy_amount, refrendo_amount,
-      total_due, due_date, subsidy_active, subsidy_condition, status, promotions
-    ]);
+    await collections.vehicleTenencias.doc(tenenciaDocId).set({
+      vehicle_id: String(vehicleId),
+      year: Number(year),
+      tenencia_amount: Number(tenencia_amount),
+      subsidy_amount: Number(subsidy_amount),
+      refrendo_amount: Number(refrendo_amount),
+      total_due: Number(total_due),
+      due_date: due_date || null,
+      subsidy_active: subsidy_active !== undefined ? Number(subsidy_active) : 1,
+      subsidy_condition: subsidy_condition || '',
+      status: status || 'PENDIENTE',
+      promotions: promotions || '',
+      last_scraped_at: nowIso,
+      server_last_scraped_at: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { success: true, id: tenenciaDocId };
   },
 
   getAllVehiclesForScraping: async () => {
-    const sql = `
-      SELECT v.id as vehicle_id, v.user_id, v.plate, v.state, v.brand, v.model, v.year, u.email, u.fcm_token
-      FROM vehicles v
-      JOIN users u ON v.user_id = u.id
-    `;
-    return query.all(sql);
+    const vSnapshot = await collections.vehicles.get();
+    const results = [];
+
+    for (const vDoc of vSnapshot.docs) {
+      const v = vDoc.data();
+      let email = '';
+      let fcm_token = null;
+
+      if (v.user_id) {
+        try {
+          const uDoc = await collections.users.doc(String(v.user_id)).get();
+          if (uDoc.exists) {
+            const uData = uDoc.data();
+            email = uData.email || '';
+            fcm_token = uData.fcm_token || null;
+          }
+        } catch (uErr) {
+          // Continuar con otros
+        }
+      }
+
+      results.push({
+        vehicle_id: vDoc.id,
+        user_id: v.user_id,
+        plate: v.plate,
+        state: v.state,
+        brand: v.brand,
+        model: v.model,
+        year: v.year,
+        email,
+        fcm_token
+      });
+    }
+
+    return results;
   }
 };
 
 module.exports = VehicleModel;
-

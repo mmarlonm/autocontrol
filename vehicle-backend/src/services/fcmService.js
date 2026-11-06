@@ -4,9 +4,12 @@ const fs = require('fs');
 const UserModel = require('../models/userModel');
 require('dotenv').config();
 
-let firebaseInitialized = false;
+let firebaseInitialized = admin.apps.length > 0;
 
-// Intentar inicializar Firebase Admin si existe archivo de credenciales
+if (admin.apps.length > 0) {
+  console.log('[FCM] Firebase Admin SDK inicializado desde instancia compartida.');
+} else {
+  // Intentar inicializar Firebase Admin si existe archivo de credenciales
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
   ? path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
   : path.join(__dirname, '../config/firebase-service-account.json');
@@ -37,6 +40,7 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   }
 } else {
   console.log('[FCM] No se encontró credencial en ' + serviceAccountPath + '. Modo simulación activo.');
+}
 }
 
 const FcmService = {
