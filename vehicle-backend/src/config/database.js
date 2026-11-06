@@ -1,24 +1,53 @@
 const { Client } = require('pg');
+const path = require('path');
 
 // Solo cargar .env en desarrollo (no existe en Render)
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+  require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 }
 
 // Log para debugging en Render
-const dbUrl = process.env.DATABASE_URL;
 console.log('[DATABASE] NODE_ENV:', process.env.NODE_ENV);
-console.log('[DATABASE] DATABASE_URL disponible:', !!dbUrl);
+console.log('[DATABASE] DATABASE_URL available:', !!process.env.DATABASE_URL);
 
-if (!dbUrl) {
-  console.error('[DATABASE] ERROR: DATABASE_URL no está configurado en variables de entorno');
+let connectionConfig;
+
+// En Render, DATABASE_URL debe estar en variables de entorno
+const dbUrl = process.env.DATABASE_URL;
+
+if (dbUrl) {
+  // Verificar que la URL sea válida
+  if (!dbUrl.includes('postgresql://') && !dbUrl.includes('postgres://')) {
+    console.error('[DATABASE] ERROR: DATABASE_URL no parece una URL de PostgreSQL válida');
+    console.error('[DATABASE] DATABASE_URL debe empezar con postgresql:// o postgres://');
+    process.exit(1);
+  }
+
+  console.log('[DATABASE] Usando DATABASE_URL de variables de entorno');
+  connectionConfig = { connectionString: dbUrl };
+} else if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD) {
+  // Fallback: construir URL desde variables individuales
+  console.log('[DATABASE] Construyendo URL desde variables individuales');
+  connectionConfig = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    database: process.env.DB_NAME || 'postgres',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD
+  };
+} else {
+  console.error('[DATABASE] CRITICAL ERROR: No hay conexión a BD configurada');
+  console.error('[DATABASE] Necesitas DATABASE_URL o DB_HOST/DB_USER/DB_PASSWORD');
   process.exit(1);
 }
 
-const client = new Client({
-  connectionString: dbUrl,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Agregar SSL para Render/Supabase
+if (process.env.NODE_ENV === 'production') {
+  connectionConfig.ssl = { rejectUnauthorized: false };
+}
+
+console.log('[DATABASE] Intentando conectar...');
+const client = new Client(connectionConfig);
 
 const db = client;
 if (db && !db.close) {
