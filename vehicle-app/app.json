@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#18b0b8"
       },
-      "package": "com.autocontrol.mexico"
+      "package": "com.autocontrol.mexico",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
