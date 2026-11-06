@@ -14,21 +14,25 @@ Configurar y ejecutar el build de la APK firmada para Android usando EAS Build.
 
 ### Archivos Disponibles
 
-1. **vehicle-app/autocontrol-release.keystore** - Keystore generado (RSA 2048, válido 10,000 días)
-2. **vehicle-app/autocontrol-keystore-config.json** - Config con credenciales del keystore
+1. **~/.autocontrol-keys/autocontrol-release.jks** - Keystore (RSA 2048, válido 10,000 días) 
+2. **~/.autocontrol-keys/keystore.properties** - Credenciales de firma
 3. **vehicle-app/app.json** - Configuración de la app Expo
 4. **vehicle-app/package.json** - Dependencias
+5. **vehicle-app/eas.json** - Configuración EAS Build (será creado)
 
-### Datos del Keystore
+### Datos del Keystore (almacenado en HOME externo)
 
 ```
-Path: ./autocontrol-release.keystore
-Alias: autocontrol
-Store Password: autocontrol2026mexico
-Key Password: autocontrol2026mexico
-Validity: 10,000 days (~ 27 años)
-Algorithm: RSA 2048-bit
-Common Name: AutoControl México
+📍 Path: C:\Users\chiva\.autocontrol-keys\autocontrol-release.jks
+🔑 Alias: autocontrol
+🔑 Store Password: autocontrol2026mexico
+🔑 Key Password: autocontrol2026mexico
+✅ Validity: 10,000 days (~ 27 años)
+🔐 Algorithm: RSA 2048-bit
+👤 Common Name: AutoControl México
+
+⚠️ IMPORTANTE: El keystore está FUERA del proyecto en C:\Users\chiva\.autocontrol-keys\
+         (Siguiendo el patrón de jr_mobile)
 ```
 
 ### Configuración de la App
