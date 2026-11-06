@@ -20,6 +20,7 @@ export default function DashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -32,10 +33,20 @@ export default function DashboardScreen({ navigation }) {
       }
 
       // 2. Cargar TODAS las tenencias
-      const resTen = await api.getAllTenencias();
-      if (resTen.success && resTen.data && resTen.data.tenencias) {
-        setAllTenencias(resTen.data.tenencias);
-      } else {
+      try {
+        const resTen = await api.getAllTenencias();
+        if (!resTen.success) {
+          setError(resTen.message || 'Error al obtener tenencias');
+          setAllTenencias([]);
+        } else if (resTen.data && resTen.data.tenencias) {
+          setError(null);
+          setAllTenencias(resTen.data.tenencias);
+        } else {
+          setError(null);
+          setAllTenencias([]);
+        }
+      } catch (err) {
+        setError(`Error de red: ${err.message}`);
         setAllTenencias([]);
       }
 
@@ -45,6 +56,7 @@ export default function DashboardScreen({ navigation }) {
         setUnreadCount(resNotif.data.unread_count || 0);
       }
     } catch (err) {
+      setError(`Error de conexión: ${err.message}`);
       setVehicle(null);
       setAllTenencias([]);
     } finally {
@@ -137,7 +149,21 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       ) : null}
 
-      {!vehicle ? (
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryBtn}
+            onPress={() => {
+              setError(null);
+              fetchDashboardData();
+            }}
+          >
+            <Text style={styles.retryText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !vehicle ? (
         // Estado vacío: Sin vehículo registrado
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>🚘</Text>
@@ -201,64 +227,70 @@ export default function DashboardScreen({ navigation }) {
           </View>
 
           {/* Mostrar TODAS las tenencias de todos los años */}
-          {allTenencias && allTenencias.length > 0 ? (
-            allTenencias.map((tenencia, idx) => (
-              <View key={idx} style={styles.summaryCard}>
-                <View style={styles.yearHeader}>
-                  <Text style={styles.yearTitle}>Año {tenencia.year}</Text>
-                  <View
-                    style={[
-                      styles.badge,
-                      tenencia.status === 'PAGADO' ? styles.badgeSuccess : styles.badgePending
-                    ]}
-                  >
-                    <Text style={styles.badgeLabel}>
-                      {tenencia.status || 'PENDIENTE DE PAGO'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Tenencia Vehicular:</Text>
-                  <Text style={styles.rowValue}>
-                    ${Number(tenencia.tenencia_base || 3200).toFixed(2)} MXN
-                  </Text>
-                </View>
-
-                {tenencia.subsidio_activo ? (
-                  <View style={styles.row}>
-                    <Text style={[styles.rowLabel, { color: '#0e858c', fontWeight: '700' }]}>
-                      Subsidio Aplicado (100%):
-                    </Text>
-                    <Text style={[styles.rowValue, { color: '#0e858c', fontWeight: '700' }]}>
-                      -${Number(tenencia.subsidio_aplicado || 3200).toFixed(2)} MXN
-                    </Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Derecho Anual de Refrendo:</Text>
-                  <Text style={styles.rowValue}>
-                    ${Number(tenencia.refrendo_a_pagar || 698).toFixed(2)} MXN
-                  </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total a Pagar:</Text>
-                  <Text style={styles.totalAmount}>
-                    ${Number(tenencia.total_a_pagar || 698).toFixed(2)} MXN
-                  </Text>
-                </View>
-
-                <Text style={styles.dueDateText}>Fecha Límite: {tenencia.fecha_limite || '31 de marzo'}</Text>
-              </View>
-            ))
-          ) : (
-            <View style={styles.summaryCard}>
-              <Text style={styles.noDataText}>Sin información de tenencias</Text>
+          {allTenencias && allTenencias.length === 0 ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={styles.emptyTitle}>Sin adeudos registrados</Text>
+              <Text style={styles.emptyDesc}>
+                Aún no hay información de tenencias. Esto se actualizará automáticamente cada mañana a las 8 AM.
+              </Text>
             </View>
+          ) : (
+            allTenencias && allTenencias.length > 0 && (
+              allTenencias.map((tenencia, idx) => (
+                <View key={idx} style={styles.summaryCard}>
+                  <View style={styles.yearHeader}>
+                    <Text style={styles.yearTitle}>Año {tenencia.year}</Text>
+                    <View
+                      style={[
+                        styles.badge,
+                        tenencia.status === 'PAGADO' ? styles.badgeSuccess : styles.badgePending
+                      ]}
+                    >
+                      <Text style={styles.badgeLabel}>
+                        {tenencia.status || 'PENDIENTE DE PAGO'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.rowLabel}>Tenencia Vehicular:</Text>
+                    <Text style={styles.rowValue}>
+                      ${Number(tenencia.tenencia_base || 3200).toFixed(2)} MXN
+                    </Text>
+                  </View>
+
+                  {tenencia.subsidio_activo ? (
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: '#0e858c', fontWeight: '700' }]}>
+                        Subsidio Aplicado (100%):
+                      </Text>
+                      <Text style={[styles.rowValue, { color: '#0e858c', fontWeight: '700' }]}>
+                        -${Number(tenencia.subsidio_aplicado || 3200).toFixed(2)} MXN
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.row}>
+                    <Text style={styles.rowLabel}>Derecho Anual de Refrendo:</Text>
+                    <Text style={styles.rowValue}>
+                      ${Number(tenencia.refrendo_a_pagar !== undefined ? tenencia.refrendo_a_pagar : (tenencia.status === 'PAGADO' ? 0 : 698)).toFixed(2)} MXN
+                    </Text>
+                  </View>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Total a Pagar:</Text>
+                    <Text style={styles.totalAmount}>
+                      ${Number(tenencia.total_a_pagar !== undefined ? tenencia.total_a_pagar : (tenencia.status === 'PAGADO' ? 0 : 698)).toFixed(2)} MXN
+                    </Text>
+                  </View>
+
+                  <Text style={styles.dueDateText}>Fecha Límite: {tenencia.fecha_limite || '31 de marzo'}</Text>
+                </View>
+              ))
+            )
           )}
 
           {/* Promociones y Automatización */}
@@ -616,5 +648,61 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f9f9',
+    padding: 20,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  retryBtn: {
+    backgroundColor: '#18b0b8',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyStateCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    marginVertical: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  emptyDesc: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
