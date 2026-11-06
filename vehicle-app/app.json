@@ -24,13 +24,6 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#18b0b8"
-        }
-      ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging"
     ],
