@@ -29,8 +29,18 @@
           "color": "#18b0b8"
         }
       ],
-      ["react-native-firebase/app"],
-      ["react-native-firebase/messaging"]
-    ]
+      [
+        "react-native-firebase/app"
+      ],
+      [
+        "react-native-firebase/messaging"
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f26aeadb-7d7f-42b7-afde-3df61a373802"
+      }
+    },
+    "owner": "mgmtechsolutions"
   }
 }
