@@ -1,0 +1,54 @@
+# Keystore & Signing
+*.keystore
+*.jks
+autocontrol-release.keystore
+autocontrol-keystore-config.json
+
+# Credentials (never commit)
+.env
+.env.local
+.env.*.local
+credentials.json
+firebase-service-account.json
+
+# Node modules
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+*.test.js
+*.spec.js
+coverage/
+
+# Build files
+build/
+dist/
+*.apk
+*.aab
+*.ipa
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+npm-debug.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

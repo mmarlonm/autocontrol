@@ -4,7 +4,7 @@ import { storageService } from './storage';
 const DEV = __DEV__;
 const DEFAULT_HOST = DEV
   ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
-  : 'https://vehicle-mgm-production.up.railway.app';
+  : 'https://autocontrol-api-hmk0.onrender.com';
 
 export const API_BASE_URL = `${DEFAULT_HOST}/api`;
 
