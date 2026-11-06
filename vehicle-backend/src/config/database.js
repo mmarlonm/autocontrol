@@ -1,9 +1,23 @@
 const { Client } = require('pg');
-require('dotenv').config();
+
+// Solo cargar .env en desarrollo (no existe en Render)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
+// Log para debugging en Render
+const dbUrl = process.env.DATABASE_URL;
+console.log('[DATABASE] NODE_ENV:', process.env.NODE_ENV);
+console.log('[DATABASE] DATABASE_URL disponible:', !!dbUrl);
+
+if (!dbUrl) {
+  console.error('[DATABASE] ERROR: DATABASE_URL no está configurado en variables de entorno');
+  process.exit(1);
+}
 
 const client = new Client({
-  connectionString: process.env.DATABASE_URL ||
-    `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
+  connectionString: dbUrl,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 const db = client;
