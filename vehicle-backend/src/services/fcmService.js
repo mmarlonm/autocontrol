@@ -11,14 +11,27 @@ const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
   ? path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
   : path.join(__dirname, '../config/firebase-service-account.json');
 
-if (fs.existsSync(serviceAccountPath)) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT_JSON === 'string'
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      : process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    firebaseInitialized = true;
+    console.log('[FCM] Firebase Admin SDK inicializado exitosamente desde FIREBASE_SERVICE_ACCOUNT_JSON.');
+  } catch (err) {
+    console.warn('[FCM] Error inicializando Firebase Admin desde JSON en ENV:', err.message);
+  }
+} else if (fs.existsSync(serviceAccountPath)) {
   try {
     const serviceAccount = require(serviceAccountPath);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
     firebaseInitialized = true;
-    console.log('[FCM] Firebase Admin SDK inicializado exitosamente.');
+    console.log('[FCM] Firebase Admin SDK inicializado exitosamente desde archivo.');
   } catch (err) {
     console.warn('[FCM] No se pudo inicializar Firebase Admin desde archivo:', err.message);
   }
