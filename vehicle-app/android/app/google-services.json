@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "74068047146",
+    "project_id": "vehicle-bd",
+    "storage_bucket": "vehicle-bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:74068047146:android:0eaad19ac73071c800da53",
+        "android_client_info": {
+          "package_name": "com.autocontrol.mexico"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQn5F5pHBY3zGLHsSBfmjqBkSNBdFd5i4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
