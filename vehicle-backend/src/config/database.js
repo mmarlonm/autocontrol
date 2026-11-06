@@ -43,7 +43,10 @@ if (dbUrl) {
 
 // Agregar SSL para Render/Supabase
 if (process.env.NODE_ENV === 'production') {
-  connectionConfig.ssl = { rejectUnauthorized: false };
+  connectionConfig.ssl = {
+    rejectUnauthorized: false,
+    sslmode: 'require'
+  };
 }
 
 console.log('[DATABASE] Intentando conectar...');
